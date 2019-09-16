@@ -77,6 +77,13 @@ def clean_inputs(inputs):
          
     return inputs
 
+@jit
+def integrand_mag(z, gap, ae, ao, ge, go):
+    return ae*np.exp(-ge*gap(z)) + ao*np.exp(-go*gap(z))
+
+@jit
+def integrand_phase(z, gap, ae, ao, ge, go):
+    return ae*np.exp(-ge*gap(z)) - ao*np.exp(-go*gap(z))
 """
 Abstract Class that all directional couplers inherit from. Each DC will inherit from it and have initial arguments (in this order): 
 
@@ -366,10 +373,12 @@ class GapFuncAntiSymmetric(DC):
         phase = np.zeros(n)
         for i in range(n):
             if part == 'both' or part == 'mag':
-                f_mag  = lambda z: float(ae[i]*np.exp(-ge[i]*self.gap(z)) + ao[i]*np.exp(-go[i]*self.gap(z)))
+                f_mag  = lambda z: integrand_mag(z, self.gap, ae[i], go[i], ge[i], go[i])
+                #f_mag  = lambda z: float(ae[i]*np.exp(-ge[i]*self.gap(z)) + ao[i]*np.exp(-go[i]*self.gap(z)))
                 mag[i] = trig( np.pi * integrate.quad(f_mag, self.zmin, self.zmax)[0] / wavelength[i] )
             if part == 'both' or part == 'ph':
-                f_phase  = lambda z: float(ae[i]*np.exp(-ge[i]*self.gap(z)) - ao[i]*np.exp(-go[i]*self.gap(z)))
+                f_phase  = lambda z: integrand_phase(z, self.gap, ae[i], go[i], ge[i], go[i])
+                #f_phase  = lambda z: float(ae[i]*np.exp(-ge[i]*self.gap(z)) - ao[i]*np.exp(-go[i]*self.gap(z)))
                 phase[i] = np.pi * integrate.quad(f_phase, self.zmin, self.zmax)[0] / wavelength[i] + 2*np.pi*neff[i]*z_dist/wavelength[i] + offset
     
         return mag*np.exp(-1j * phase)
